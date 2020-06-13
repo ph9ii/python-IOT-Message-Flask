@@ -47,17 +47,17 @@ class Message(Resource):
                 status.HTTP_404_NOT_FOUND,
                 message=f"Message with id {id} doesn't exist"
             )
-    
+
     @marshal_with(message_fields)
     def get(self, id):
         self.abort_if_message_doesnt_exist(id)
         return message_manager.get_message(id)
-    
+
     def delete(self, id):
         self.abort_if_message_doesnt_exist(id)
         message_manager.delete_message(id)
         return '', status.HTTP_204_NO_CONTENT
-    
+
     @marshal_with(message_fields)
     def patch(self, id):
         self.abort_if_message_doesnt_exist(id)
@@ -77,3 +77,28 @@ class Message(Resource):
         if 'printed_once' in args:
             message.printed_once = args['printed_once']
         return message
+
+
+class MessageList(Resource):
+    @marshal_with(message_fields)
+    def get(self):
+        return [v for v in message_manager.messages.values()]
+
+    @marshal_with(message_fields)
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('message', type=str, required=True,
+                            help='Message cannot be blank!')
+        parser.add_argument('duration', type=int, required=True,
+                            help='Duration cannot be blank!')
+        parser.add_argument('message_category', type=str,
+                            required=True, help='Message category cannot be blank')
+        args = parser.parse_args()
+        message = MessageModel(
+            message=args['message'],
+            duration=args['duration'],
+            message_category=args['message_category'],
+            creation_date=datetime.now(utc)
+        )
+        message_manager.insert_message(message)
+        return message, status.HTTP_201_CREATED
