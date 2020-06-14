@@ -90,3 +90,72 @@ class MessageListResource(Resource):
             db.session.rollback()
             resp = jsonify({"error": str(e)})
             return resp, status.HTTP_400_BAD_REQUEST
+
+
+class CategoryResource(Resource):
+    def get(self, id):
+        category = Category.query.get_or_404(id)
+        result = category_schema.dump(category).data
+        return result
+
+    def patch(self, id):
+        category = Category.query.get_or_404(id)
+        category_dict = request.get_json()
+        if not category_dict:
+            resp = {"message": "No input data provided"}
+            return resp, status.HTTP_400_BAD_REQUEST
+        errors = category_schema.validate(category_dict)
+        if errors:
+            return errors, status.HTTP_400_BAD_REQUEST
+        try:
+            if 'name' in category_dict:
+                category.name = category_dict['name']
+            category.update()
+            return self.get(id)
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            resp = jsonify({"error": str(e)})
+            return resp, status.HTTP_400_BAD_REQUEST
+
+    def delete(self, id):
+        category = Category.query.get_or_404(id)
+        try:
+            category.delete(category)
+            response = make_response()
+            return response, status.HTTP_204_NO_CONTENT
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            resp = jsonify({"error": str(e)})
+            return resp, status.HTTP_401_UNAUTHORIZED
+
+
+class CategoryListResource(Resource):
+    def get(self):
+        categories = Category.query.all()
+        results = category_schema.dump(categories, many=True).data
+        return results
+
+    def post(self):
+        request_dict = request.get_json()
+        if not request_dict:
+            resp = {"message": "No input data provided"}
+            return resp, status.HTTP_400_BAD_REQUEST
+        errors = category_schema.validate(request_dict)
+        if errors:
+            return errors, status.HTTP_400_BAD_REQUEST
+        try:
+            category = Category(request_dict['name'])
+            cateogry.add(category)
+            query = Category.query.get(category.id)
+            result = category_schema.dump(query).data
+            return result, status.HTTP_201_CREATED
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            resp = jsonify({"error": str(e)})
+            return resp, status.HTTP_400_BAD_REQUEST
+
+
+api.add_resource(CategoryListResource, '/categories/')
+api.add_resource(CategoryResource, '/categories/<int:id>')
+api.add_resource(MessageListResource, '/messages/')
+api.add_resource(MessageResource, '/messages/<int:id>')
